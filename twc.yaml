@@ -1,0 +1,68 @@
+esphome:
+  name: twc
+  platform: ESP32
+  friendly_name: Tesla Wall Connector
+
+esp32:
+  board: esp32dev
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+  level: DEBUG
+
+ota:
+
+api:
+
+uart:
+  id: twc_uart
+  tx_pin: 5
+  rx_pin: 19
+  baud_rate: 9600
+  data_bits: 8
+  parity: NONE
+  stop_bits: 1
+
+external_components:
+  - source: github://jnicolson/esphome-twc-controller
+    components: [twc-controller]
+
+twc-controller:
+  id: twc
+  uart_id: twc_uart
+  min_current: 6
+  max_current: 32
+  set_current: 6
+  twc_id: 0xAB32
+  flow_control_pin: 18
+  current:
+    name: "Charging Current"
+  max_allowable_current:
+    name: "Maximum Allowable Current"
+  total_kwh_delivered:
+    name: "Total kWh Delivered"
+  serial:
+    name: "Serial"
+  phase_1_voltage:
+    name: "Phase 1 Voltage"
+  phase_2_voltage:
+    name: "Phase 2 Voltage"
+  phase_3_voltage:
+    name: "Phase 3 Voltage"
+  phase_1_current:
+    name: "Phase 1 Current"
+  phase_2_current:
+    name: "Phase 2 Current"
+  phase_3_current:
+    name: "Phase 3 Current"
+  firmware_version:
+    name: "Firmware Version"
+  actual_current:
+    name: "Actual Current"
+  connected_vin:
+    name: "Connected VIN"
+  state:
+    name: "State"
