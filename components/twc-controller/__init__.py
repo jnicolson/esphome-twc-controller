@@ -22,11 +22,11 @@ from esphome.const import (
     UNIT_AMPERE,
     UNIT_KILOWATT_HOURS,
     UNIT_VOLT,
-    
+
     DEVICE_CLASS_CURRENT,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_VOLTAGE,
-    
+
     STATE_CLASS_MEASUREMENT,
 )
 
@@ -88,7 +88,7 @@ def validate_min_max(config):
     if CONF_SET_CURRENT in config:
         if (config[CONF_SET_CURRENT] > config[CONF_MAX_CURRENT]) or (config[CONF_SET_CURRENT] < config[CONF_MIN_CURRENT]):
             raise cv.Invalid(f"{CONF_SET_CURRENT} must be between {CONF_MIN_CURRENT} and {CONF_MAX_CURRENT}")
-    
+
     return config
 
 CONFIG_SCHEMA = cv.All(
@@ -171,7 +171,7 @@ CONFIG_SCHEMA = cv.All(
             ),
             cv.Optional(CONF_FIRMWARE_VERSION): text_sensor.text_sensor_schema(
                 icon=ICON_NUMERIC,
-            ),                    
+            ),
             cv.Optional(CONF_VIN): text_sensor.text_sensor_schema(
                 icon=ICON_CAR,
             ),
@@ -185,7 +185,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_STATE): sensor.sensor_schema(
                 icon=ICON_CURRENT_AC,
                 accuracy_decimals=0,
-            ),            
+            ),
         }
     )
     .extend(uart.UART_DEVICE_SCHEMA)

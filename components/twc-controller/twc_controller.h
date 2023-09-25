@@ -34,8 +34,8 @@ namespace esphome {
                 void loop() override;
                 void dump_config() override;
 
-                float get_setup_priority() const override { 
-                    return esphome::setup_priority::AFTER_CONNECTION; 
+                float get_setup_priority() const override {
+                    return esphome::setup_priority::AFTER_CONNECTION;
                 }
 
                 void set_min_current(uint8_t current);
@@ -43,7 +43,7 @@ namespace esphome {
                 void set_twcid(uint16_t);
 
                 void set_flow_control_pin(GPIOPin *flow_control_pin) { this->flow_control_pin_ = flow_control_pin; }
-               
+
                 SUB_SENSOR(current)
                 SUB_SENSOR(max_allowable_current)
                 SUB_SENSOR(total_kwh_delivered)
@@ -55,12 +55,12 @@ namespace esphome {
                 SUB_SENSOR(phase_3_current)
                 SUB_SENSOR(actual_current)
                 SUB_SENSOR(state)
-                
+
                 SUB_TEXT_SENSOR(serial)
                 SUB_TEXT_SENSOR(firmware_version)
                 SUB_TEXT_SENSOR(connected_vin)
 
-/* IO Functions */                
+/* IO Functions */
                 void writeActualCurrent(uint8_t actualCurrent);
                 void writeCharger(uint16_t, uint8_t);
                 void writeChargerCurrent(uint16_t, uint8_t, uint8_t);
@@ -83,7 +83,7 @@ namespace esphome {
                 GPIOPin *flow_control_pin_{nullptr};
                 void print_params_();
                 void control(float value);
-                
+
                 TeslaController *teslaController_;
                 std::function<void(uint8_t)> onCurrentMessageCallback_=nullptr;
                 uint8_t min_current_;

@@ -78,7 +78,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 namespace esphome {
     namespace twc_controller {
-            
+
         struct PACKET_T {
             uint16_t command;
             uint16_t twcid;
@@ -110,7 +110,7 @@ namespace esphome {
             uint16_t actual_current;
             uint8_t padding[4];
             uint8_t checksum;
-        } PACKED; 
+        } PACKED;
 
         struct P_HEARTBEAT_T {
             uint16_t command;
@@ -121,7 +121,7 @@ namespace esphome {
             uint8_t plug_inserted;
             uint8_t padding[5];
             uint8_t checksum;
-        } PACKED; 
+        } PACKED;
 
         // Standard response packet payload
         struct PRESENCE_PAYLOAD_T {
@@ -169,7 +169,7 @@ namespace esphome {
 
                 void Begin();
                 void GetPowerStatus(uint16_t secondary_twcid);
-                void GetFirmware(uint16_t secondary_twcid);        
+                void GetFirmware(uint16_t secondary_twcid);
                 void GetSerial(uint16_t secondary_twcid);
                 void GetFirmwareVer(uint16_t secondary_twcid);
                 void GetVin(uint16_t secondary_twcid);
@@ -217,7 +217,7 @@ namespace esphome {
                 uart::UARTComponent *serial_;
                 GPIOPin *flow_control_pin_{nullptr};
                 TeslaControllerIO *controller_io_;
-                uint8_t num_connected_chargers_;  
+                uint8_t num_connected_chargers_;
                 uint16_t twcid_;
                 uint8_t sign_;
                 uint8_t receive_buffer_[MAX_PACKET_LENGTH];

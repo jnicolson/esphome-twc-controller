@@ -29,10 +29,10 @@ namespace esphome {
             this->publish_state(this->min_current_);
 
             teslaController_ = new TeslaController(this->parent_, this, twcid_, flow_control_pin_);
-            
+
             teslaController_->SetMinCurrent(this->min_current_);
             teslaController_->SetMaxCurrent(this->max_current_);
-            
+
             teslaController_->Begin();
             teslaController_->Startup();
         }
@@ -70,7 +70,7 @@ namespace esphome {
 
         void TWCController::writeChargerSerial(uint16_t twcid, std::string serial) {
             this->serial_text_sensor_->publish_state(serial);
-        } 
+        }
 
         void TWCController::writeChargerTotalKwh(uint16_t twcid, uint32_t total_kwh) {
             this->total_kwh_delivered_sensor_->publish_state((float)total_kwh);
@@ -94,8 +94,8 @@ namespace esphome {
         }
 
         void TWCController::writeTotalConnectedChargers(uint8_t connected_chargers) {
-        
-        };                
+
+        };
 
         void TWCController::writeChargerFirmware(uint16_t twcid, std::string firmware_version) {
             this->firmware_version_text_sensor_->publish_state(firmware_version);
@@ -105,7 +105,7 @@ namespace esphome {
             this->actual_current_sensor_->publish_state((float)current);
         }
 
-        void TWCController::writeChargerTotalPhaseCurrent(uint8_t current, uint8_t phase) {          
+        void TWCController::writeChargerTotalPhaseCurrent(uint8_t current, uint8_t phase) {
 
         }
 
@@ -132,7 +132,7 @@ namespace esphome {
         void TWCController::onCurrentMessage(std::function<void(uint8_t)> callback) {
             onCurrentMessageCallback_ = callback;
         }
-        
+
 
 /* End IO Functions */
 
