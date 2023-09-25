@@ -43,6 +43,27 @@ namespace esphome {
         }
 
 /* IO Functions */
+        void TWCController::resetIO(uint16_t twcid) {
+            // Write 0's to MQTT for each topic which has 0 as a valid value.  This is because
+            // we compare the old and new values and by default everything is 0 so it never writes
+            // anything.  This way we start at 0 and immediately update to the real value if there is
+            // one, or stay at 0 (which is correct) if there isn't.
+            writeChargerVoltage(twcid, 0, 1);
+            writeChargerVoltage(twcid, 0, 2);
+            writeChargerVoltage(twcid, 0, 3);
+
+            writeChargerCurrent(twcid, 0, 1);
+            writeChargerCurrent(twcid, 0, 2);
+            writeChargerCurrent(twcid, 0, 3);
+
+            writeChargerActualCurrent(twcid, 0);
+
+            writeChargerConnectedVin(twcid, "0");
+
+            writeChargerState(twcid, 0);
+            writeTotalConnectedCars(0);
+        }
+
         void TWCController::writeActualCurrent(uint8_t actualCurrent) {
             this->current_sensor_->publish_state((float)actualCurrent);
         }

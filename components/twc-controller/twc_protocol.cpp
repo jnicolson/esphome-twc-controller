@@ -569,25 +569,7 @@ namespace esphome {
                 controller_io_->writeCharger(connector->twcid, connector->max_allowable_current);
                 controller_io_->writeTotalConnectedChargers(num_connected_chargers_);
 
-                // Write 0's to MQTT for each topic which has 0 as a valid value.  This is because
-                // we compare the old and new values and by default everything is 0 so it never writes
-                // anything.  This way we start at 0 and immediately update to the real value if there is
-                // one, or stay at 0 (which is correct) if there isn't.
-                controller_io_->writeChargerVoltage(presence->twcid, 0, 1);
-                controller_io_->writeChargerVoltage(presence->twcid, 0, 2);
-                controller_io_->writeChargerVoltage(presence->twcid, 0, 3);
-
-                controller_io_->writeChargerCurrent(presence->twcid, 0, 1);
-                controller_io_->writeChargerCurrent(presence->twcid, 0, 2);
-                controller_io_->writeChargerCurrent(presence->twcid, 0, 3);
-
-                controller_io_->writeChargerActualCurrent(presence->twcid, 0);
-
-                controller_io_->writeChargerConnectedVin(presence->twcid, "0");
-
-                controller_io_->writeChargerState(presence->twcid, 0);
-
-                controller_io_->writeTotalConnectedCars(0);
+                controller_io_->resetIO(presence->twcid);
             }
         }
 

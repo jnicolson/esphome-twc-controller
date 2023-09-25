@@ -61,6 +61,7 @@ namespace esphome {
                 SUB_TEXT_SENSOR(connected_vin)
 
 /* IO Functions */
+                void resetIO(uint16_t);
                 void writeActualCurrent(uint8_t actualCurrent);
                 void writeCharger(uint16_t, uint8_t);
                 void writeChargerCurrent(uint16_t, uint8_t, uint8_t);
