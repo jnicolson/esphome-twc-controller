@@ -389,6 +389,8 @@ namespace esphome {
 
             TeslaConnector *c = GetConnector(power_state->twcid);
 
+            if (!c)
+                return;
             uint32_t total_kwh = ntohl(power_state_payload->total_kwh);
             if (total_kwh != c->total_kwh) {
                 c->total_kwh = total_kwh;
