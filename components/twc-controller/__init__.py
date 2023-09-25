@@ -24,10 +24,11 @@ from esphome.const import (
     UNIT_VOLT,
     
     DEVICE_CLASS_CURRENT,
-    DEVICE_CLASS_POWER,
+    DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_VOLTAGE,
     
     STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL_INCREASING,
 )
 
 CONF_MAX_ALLOWABLE_CURRENT = "max_allowable_current"
@@ -121,8 +122,8 @@ CONFIG_SCHEMA = cv.All(
                 unit_of_measurement=UNIT_KILOWATT_HOURS,
                 icon=ICON_CURRENT_AC,
                 accuracy_decimals=0,
-                device_class=DEVICE_CLASS_POWER,
-                state_class=STATE_CLASS_MEASUREMENT,
+                device_class=DEVICE_CLASS_ENERGY,
+                state_class=STATE_CLASS_TOTAL_INCREASING,
             ),
             cv.Optional(CONF_SERIAL): text_sensor.text_sensor_schema(
                 icon=ICON_CURRENT_AC,
