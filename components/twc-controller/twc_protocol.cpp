@@ -27,7 +27,7 @@ namespace esphome {
     namespace twc_controller {
         static const char *TAG = "twc.protocol";
 
-        TeslaController::TeslaController(uart::UARTComponent* serial, TeslaControllerIO *io, uint16_t twcid, GPIOPin *flow_control_pin) : 
+        TeslaController::TeslaController(uart::UARTComponent* serial, TeslaControllerIO *io, uint16_t twcid, GPIOPin *flow_control_pin, int passive_mode) :
             serial_(serial),
             controller_io_(io),
             flow_control_pin_(flow_control_pin),
@@ -37,7 +37,8 @@ namespace esphome {
             num_connected_chargers_(0),
             twcid_(twcid),
             sign_(0x77),
-            debug_(false)
+            debug_(false),
+            passive_mode_(passive_mode)
         {
         }
 
@@ -64,6 +65,10 @@ namespace esphome {
         void TeslaController::startupTask_(void *pvParameter) {
 
             TeslaController* twc = static_cast<TeslaController*>(pvParameter);
+
+            while (twc->passive_mode_)
+                vTaskDelay(1000+random(100,200)/portTICK_PERIOD_MS);
+
 
             for (uint8_t i = 0; i < 5; i++) {
                 twc->SendPresence();
@@ -389,8 +394,24 @@ namespace esphome {
 
             TeslaConnector *c = GetConnector(power_state->twcid);
 
-            if (!c)
-                return;
+            if (!c) {
+                if (!passive_mode_) return;
+
+                // Accept the fact that we've missed Primary's presence message.
+                ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x,Max Allowable Current: ?\r\n",
+                    power_state->twcid);
+
+                uint8_t max_allowable_current = 99;
+
+                c = new TeslaConnector(power_state->twcid, max_allowable_current);
+                chargers[num_connected_chargers_++] = c;
+
+                controller_io_->writeCharger(c->twcid, c->max_allowable_current);
+                controller_io_->writeTotalConnectedChargers(num_connected_chargers_);
+
+                controller_io_->resetIO(power_state->twcid);
+            }
+
             uint32_t total_kwh = ntohl(power_state_payload->total_kwh);
             if (total_kwh != c->total_kwh) {
                 c->total_kwh = total_kwh;
@@ -451,6 +472,29 @@ namespace esphome {
 
         void TeslaController::DecodePrimaryPresence(RESP_PACKET_T *presence, uint8_t num) {
             PRESENCE_PAYLOAD_T *presence_payload = (PRESENCE_PAYLOAD_T *)presence->payload;
+
+            // in case we're passively listening we have to handle primary presence like a secondary
+            // one.. beacuse we will still get the power status
+            TeslaConnector *connector = GetConnector(presence->twcid);
+
+            if (!connector) {
+                ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x, Sign: %02x, Max Allowable Current: %d\r\n",
+                    presence->twcid,
+                    presence_payload->sign,
+                    ntohs(presence_payload->max_allowable_current)
+                );
+
+                uint8_t max_allowable_current = (uint8_t)(ntohs(presence_payload->max_allowable_current)/100);
+
+                connector = new TeslaConnector(presence->twcid, max_allowable_current);
+                chargers[num_connected_chargers_++] = connector;
+
+                controller_io_->writeCharger(connector->twcid, connector->max_allowable_current);
+                controller_io_->writeTotalConnectedChargers(num_connected_chargers_);
+
+                controller_io_->resetIO(presence->twcid);
+            }
+
 
             if (debug_) {
                 ESP_LOGD(TAG, "Decoded: Primary Presence %d - ID: %02x, Sign: %02x\r\n",

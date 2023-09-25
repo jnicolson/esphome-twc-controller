@@ -42,6 +42,7 @@ namespace esphome {
                 void set_max_current(uint8_t current);
                 void set_twcid(uint16_t);
 
+                void set_passive_mode(int passive_mode) { this->passive_mode_ = passive_mode; }
                 void set_flow_control_pin(GPIOPin *flow_control_pin) { this->flow_control_pin_ = flow_control_pin; }
 
                 SUB_SENSOR(current)
@@ -90,6 +91,7 @@ namespace esphome {
                 uint8_t min_current_;
                 uint8_t max_current_;
                 uint16_t twcid_;
+                uint8_t passive_mode_;
         };
 
     }

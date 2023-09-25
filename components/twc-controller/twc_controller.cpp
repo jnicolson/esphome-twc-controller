@@ -28,7 +28,7 @@ namespace esphome {
 
             this->publish_state(this->min_current_);
 
-            teslaController_ = new TeslaController(this->parent_, this, twcid_, flow_control_pin_);
+            teslaController_ = new TeslaController(this->parent_, this, twcid_, flow_control_pin_, passive_mode_);
 
             teslaController_->SetMinCurrent(this->min_current_);
             teslaController_->SetMaxCurrent(this->max_current_);

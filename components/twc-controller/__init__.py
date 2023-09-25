@@ -42,6 +42,7 @@ CONF_PHASE_3_CURRENT = "phase_3_current"
 CONF_FIRMWARE_VERSION = "firmware_version"
 CONF_ACTUAL_CURRENT = "actual_current"
 CONF_VIN = "connected_vin"
+CONF_PASSIVE_MODE = "passive_mode"
 
 CONF_MIN_CURRENT = "min_current"
 CONF_MAX_CURRENT = "max_current"
@@ -102,6 +103,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_STEP, default=1): cv.positive_int,
             cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
             cv.Optional(CONF_UNIT_OF_MEASUREMENT, default=UNIT_AMPERE): cv.one_of(UNIT_AMPERE),
+            cv.Optional(CONF_PASSIVE_MODE, default=0): cv.int_range(min=0, max=1),
             cv.Required(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_CURRENT): sensor.sensor_schema(
                 unit_of_measurement=UNIT_AMPERE,
@@ -217,6 +219,7 @@ async def to_code(config):
     cg.add(num_var.set_min_current(config[CONF_MIN_CURRENT]))
     cg.add(num_var.set_max_current(config[CONF_MAX_CURRENT]))
     cg.add(num_var.set_twcid(config[CONF_TWCID]))
+    cg.add(num_var.set_passive_mode(config[CONF_PASSIVE_MODE]))
 
     for key in TYPES:
         await setup_sensor(config, key, num_var)
