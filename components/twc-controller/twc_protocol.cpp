@@ -548,15 +548,10 @@ namespace esphome {
 
         void TeslaController::DecodeSecondaryPresence(RESP_PACKET_T *presence) {
             PRESENCE_PAYLOAD_T *presence_payload = (PRESENCE_PAYLOAD_T *)presence->payload;
-            bool alreadySeen = false;
 
-            for (uint8_t i = 0; i < num_connected_chargers_; i++) {
-                if (chargers[i]->twcid == presence->twcid) {
-                    alreadySeen = true;
-                }
-            }
+            TeslaConnector *connector = GetConnector(presence->twcid);
 
-            if (!alreadySeen) {
+            if (!connector) {
                 ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x, Sign: %02x, Max Allowable Current: %d\r\n",
                     presence->twcid,
                     presence_payload->sign,
@@ -565,7 +560,7 @@ namespace esphome {
 
                 uint8_t max_allowable_current = (uint8_t)(ntohs(presence_payload->max_allowable_current)/100);
 
-                TeslaConnector *connector = new TeslaConnector(presence->twcid, max_allowable_current);
+                connector = new TeslaConnector(presence->twcid, max_allowable_current);
                 chargers[num_connected_chargers_++] = connector;
 
                 controller_io_->writeCharger(connector->twcid, connector->max_allowable_current);
