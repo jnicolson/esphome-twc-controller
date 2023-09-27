@@ -20,6 +20,7 @@ namespace esphome {
         class TeslaControllerIO {
             public:
                 virtual ~TeslaControllerIO() {};
+                virtual void resetIO(uint16_t);
                 virtual void writeActualCurrent(uint8_t) = 0;
                 virtual void writeCharger(uint16_t, uint8_t) = 0;
                 virtual void writeChargerCurrent(uint16_t, uint8_t, uint8_t) = 0;

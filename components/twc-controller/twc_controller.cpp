@@ -28,11 +28,11 @@ namespace esphome {
 
             this->publish_state(this->min_current_);
 
-            teslaController_ = new TeslaController(this->parent_, this, twcid_, flow_control_pin_);
-            
+            teslaController_ = new TeslaController(this->parent_, this, twcid_, flow_control_pin_, passive_mode_);
+
             teslaController_->SetMinCurrent(this->min_current_);
             teslaController_->SetMaxCurrent(this->max_current_);
-            
+
             teslaController_->Begin();
             teslaController_->Startup();
         }
@@ -43,6 +43,27 @@ namespace esphome {
         }
 
 /* IO Functions */
+        void TWCController::resetIO(uint16_t twcid) {
+            // Write 0's to MQTT for each topic which has 0 as a valid value.  This is because
+            // we compare the old and new values and by default everything is 0 so it never writes
+            // anything.  This way we start at 0 and immediately update to the real value if there is
+            // one, or stay at 0 (which is correct) if there isn't.
+            writeChargerVoltage(twcid, 0, 1);
+            writeChargerVoltage(twcid, 0, 2);
+            writeChargerVoltage(twcid, 0, 3);
+
+            writeChargerCurrent(twcid, 0, 1);
+            writeChargerCurrent(twcid, 0, 2);
+            writeChargerCurrent(twcid, 0, 3);
+
+            writeChargerActualCurrent(twcid, 0);
+
+            writeChargerConnectedVin(twcid, "0");
+
+            writeChargerState(twcid, 0);
+            writeTotalConnectedCars(0);
+        }
+
         void TWCController::writeActualCurrent(uint8_t actualCurrent) {
             this->current_sensor_->publish_state((float)actualCurrent);
         }
@@ -70,7 +91,7 @@ namespace esphome {
 
         void TWCController::writeChargerSerial(uint16_t twcid, std::string serial) {
             this->serial_text_sensor_->publish_state(serial);
-        } 
+        }
 
         void TWCController::writeChargerTotalKwh(uint16_t twcid, uint32_t total_kwh) {
             this->total_kwh_delivered_sensor_->publish_state((float)total_kwh);
@@ -94,8 +115,8 @@ namespace esphome {
         }
 
         void TWCController::writeTotalConnectedChargers(uint8_t connected_chargers) {
-        
-        };                
+
+        };
 
         void TWCController::writeChargerFirmware(uint16_t twcid, std::string firmware_version) {
             this->firmware_version_text_sensor_->publish_state(firmware_version);
@@ -105,7 +126,7 @@ namespace esphome {
             this->actual_current_sensor_->publish_state((float)current);
         }
 
-        void TWCController::writeChargerTotalPhaseCurrent(uint8_t current, uint8_t phase) {          
+        void TWCController::writeChargerTotalPhaseCurrent(uint8_t current, uint8_t phase) {
 
         }
 
@@ -132,7 +153,7 @@ namespace esphome {
         void TWCController::onCurrentMessage(std::function<void(uint8_t)> callback) {
             onCurrentMessageCallback_ = callback;
         }
-        
+
 
 /* End IO Functions */
 

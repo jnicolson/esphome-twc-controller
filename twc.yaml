@@ -1,6 +1,5 @@
 esphome:
   name: twc
-  platform: ESP32
   friendly_name: Tesla Wall Connector
 
 esp32:

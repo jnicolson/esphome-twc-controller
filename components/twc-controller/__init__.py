@@ -22,11 +22,11 @@ from esphome.const import (
     UNIT_AMPERE,
     UNIT_KILOWATT_HOURS,
     UNIT_VOLT,
-    
+
     DEVICE_CLASS_CURRENT,
     DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_VOLTAGE,
-    
+
     STATE_CLASS_MEASUREMENT,
     STATE_CLASS_TOTAL_INCREASING,
 )
@@ -43,6 +43,7 @@ CONF_PHASE_3_CURRENT = "phase_3_current"
 CONF_FIRMWARE_VERSION = "firmware_version"
 CONF_ACTUAL_CURRENT = "actual_current"
 CONF_VIN = "connected_vin"
+CONF_PASSIVE_MODE = "passive_mode"
 
 CONF_MIN_CURRENT = "min_current"
 CONF_MAX_CURRENT = "max_current"
@@ -89,7 +90,7 @@ def validate_min_max(config):
     if CONF_SET_CURRENT in config:
         if (config[CONF_SET_CURRENT] > config[CONF_MAX_CURRENT]) or (config[CONF_SET_CURRENT] < config[CONF_MIN_CURRENT]):
             raise cv.Invalid(f"{CONF_SET_CURRENT} must be between {CONF_MIN_CURRENT} and {CONF_MAX_CURRENT}")
-    
+
     return config
 
 CONFIG_SCHEMA = cv.All(
@@ -103,6 +104,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_STEP, default=1): cv.positive_int,
             cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
             cv.Optional(CONF_UNIT_OF_MEASUREMENT, default=UNIT_AMPERE): cv.one_of(UNIT_AMPERE),
+            cv.Optional(CONF_PASSIVE_MODE, default=0): cv.int_range(min=0, max=1),
             cv.Required(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_CURRENT): sensor.sensor_schema(
                 unit_of_measurement=UNIT_AMPERE,
@@ -172,7 +174,7 @@ CONFIG_SCHEMA = cv.All(
             ),
             cv.Optional(CONF_FIRMWARE_VERSION): text_sensor.text_sensor_schema(
                 icon=ICON_NUMERIC,
-            ),                    
+            ),
             cv.Optional(CONF_VIN): text_sensor.text_sensor_schema(
                 icon=ICON_CAR,
             ),
@@ -186,7 +188,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_STATE): sensor.sensor_schema(
                 icon=ICON_CURRENT_AC,
                 accuracy_decimals=0,
-            ),            
+            ),
         }
     )
     .extend(uart.UART_DEVICE_SCHEMA)
@@ -218,6 +220,7 @@ async def to_code(config):
     cg.add(num_var.set_min_current(config[CONF_MIN_CURRENT]))
     cg.add(num_var.set_max_current(config[CONF_MAX_CURRENT]))
     cg.add(num_var.set_twcid(config[CONF_TWCID]))
+    cg.add(num_var.set_passive_mode(config[CONF_PASSIVE_MODE]))
 
     for key in TYPES:
         await setup_sensor(config, key, num_var)

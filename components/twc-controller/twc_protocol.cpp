@@ -27,7 +27,7 @@ namespace esphome {
     namespace twc_controller {
         static const char *TAG = "twc.protocol";
 
-        TeslaController::TeslaController(uart::UARTComponent* serial, TeslaControllerIO *io, uint16_t twcid, GPIOPin *flow_control_pin) : 
+        TeslaController::TeslaController(uart::UARTComponent* serial, TeslaControllerIO *io, uint16_t twcid, GPIOPin *flow_control_pin, int passive_mode) :
             serial_(serial),
             controller_io_(io),
             flow_control_pin_(flow_control_pin),
@@ -37,7 +37,8 @@ namespace esphome {
             num_connected_chargers_(0),
             twcid_(twcid),
             sign_(0x77),
-            debug_(false)
+            debug_(false),
+            passive_mode_(passive_mode)
         {
         }
 
@@ -65,6 +66,10 @@ namespace esphome {
 
             TeslaController* twc = static_cast<TeslaController*>(pvParameter);
 
+            while (twc->passive_mode_)
+                vTaskDelay(1000+random(100,200)/portTICK_PERIOD_MS);
+
+
             for (uint8_t i = 0; i < 5; i++) {
                 twc->SendPresence();
                 vTaskDelay(1000/portTICK_PERIOD_MS);
@@ -76,7 +81,7 @@ namespace esphome {
             };
 
             uint8_t commandNumber = 0;
-                
+
             for (;;) {
                 if (twc->ChargersConnected() > 0) {
                     for (uint8_t i = 0; i < twc->ChargersConnected(); i++) {
@@ -84,7 +89,7 @@ namespace esphome {
                         if (twc->current_changed_ == true) { twc->current_changed_ = false; };
 
                         vTaskDelay(500+random(50,100)/portTICK_PERIOD_MS);
-                        
+
                         switch (commandNumber) {
                             case 0:
                                 twc->SendCommand(GET_VIN_FIRST, twc->chargers[i]->twcid);
@@ -108,12 +113,12 @@ namespace esphome {
                         vTaskDelay(1000+random(100,200)/portTICK_PERIOD_MS);
                     }
 
-                    if (commandNumber >= 5) { 
-                        commandNumber = 0; 
+                    if (commandNumber >= 5) {
+                        commandNumber = 0;
                     } else {
                         commandNumber++;
                     };
-                    
+
                 } else {
                     vTaskDelay(1000+random(100,200)/portTICK_PERIOD_MS);
                 }
@@ -161,13 +166,13 @@ namespace esphome {
                             receive_index_ = 0;
                         }
                         break;
-                    
+
                     case SLIP_ESC:
                         // Use readBytes rather than read so that this blocks.  Previously using
                         // read, it would try to read too fast before the secondary had sent the next
                         // byte and this would fall through to default.  This meant bytes were not being
                         // decoded and the next character was appearing in the packet rather than the
-                        // decoded character.  
+                        // decoded character.
 
                         // Check if readBytes returned 1 character.  If it didn't, it means
                         // the timeout was hit and therefore this should be discarded (dropping)
@@ -176,7 +181,7 @@ namespace esphome {
                             ESP_LOGE(TAG, "Error while receiving packet data for a packet");
                             return;
                         }
-                        
+
                         switch (receivedChar) {
                             case SLIP_ESC_END:
                                 receive_buffer_[receive_index_++] = SLIP_END;
@@ -299,8 +304,8 @@ namespace esphome {
 
             for (uint8_t i = 0; i < 5; i++) {
             heartbeat.padding[i] = 0x00;
-            }    
-                
+            }
+
             heartbeat.checksum = CalculateChecksum((uint8_t*)&heartbeat, sizeof(heartbeat));
 
             SendData((uint8_t*)&heartbeat, sizeof(heartbeat));
@@ -341,14 +346,14 @@ namespace esphome {
 
         void TeslaController::DecodeExtFirmwareVerison(RESP_PACKET_T *firmware_ver) {
             EXT_FIRMWARE_PAYLOAD_T *firmware_payload = (EXT_FIRMWARE_PAYLOAD_T *)firmware_ver->payload;
-            
+
             TeslaConnector *c = GetConnector(firmware_ver->twcid);
 
             char buffer[10];
-            snprintf(buffer, 10, "%d.%d.%d.%d", 
-                firmware_payload->major, 
-                firmware_payload->minor, 
-                firmware_payload->revision, 
+            snprintf(buffer, 10, "%d.%d.%d.%d",
+                firmware_payload->major,
+                firmware_payload->minor,
+                firmware_payload->revision,
                 firmware_payload->extended
             );
 
@@ -358,10 +363,10 @@ namespace esphome {
             }
 
             if (debug_) {
-                ESP_LOGD(TAG, "Decoded: ID: %04x, Firmware Ver: %d.%d.%d.%d\r\n", 
-                    firmware_ver->twcid, 
-                    firmware_payload->major, 
-                    firmware_payload->minor, 
+                ESP_LOGD(TAG, "Decoded: ID: %04x, Firmware Ver: %d.%d.%d.%d\r\n",
+                    firmware_ver->twcid,
+                    firmware_payload->major,
+                    firmware_payload->minor,
                     firmware_payload->revision,
                     firmware_payload->extended
                 );
@@ -377,7 +382,7 @@ namespace esphome {
                 strcpy((char *)&c->serial_number, (const char*)&serial_payload->serial);
                 controller_io_->writeChargerSerial(serial->twcid, std::string((char*)&c->serial_number));
             }
-            
+
 
             if (debug_) {
                 ESP_LOGD(TAG, "Decoded: ID: %04x, Serial Number: %s", serial->twcid, std::string((char*)&c->serial_number));
@@ -388,6 +393,24 @@ namespace esphome {
             POWERSTATUS_PAYLOAD_T *power_state_payload = (POWERSTATUS_PAYLOAD_T *)power_state->payload;
 
             TeslaConnector *c = GetConnector(power_state->twcid);
+
+            if (!c) {
+                if (!passive_mode_) return;
+
+                // Accept the fact that we've missed Primary's presence message.
+                ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x,Max Allowable Current: ?\r\n",
+                    power_state->twcid);
+
+                uint8_t max_allowable_current = 99;
+
+                c = new TeslaConnector(power_state->twcid, max_allowable_current);
+                chargers[num_connected_chargers_++] = c;
+
+                controller_io_->writeCharger(c->twcid, c->max_allowable_current);
+                controller_io_->writeTotalConnectedChargers(num_connected_chargers_);
+
+                controller_io_->resetIO(power_state->twcid);
+            }
 
             uint32_t total_kwh = ntohl(power_state_payload->total_kwh);
             if (total_kwh != c->total_kwh) {
@@ -435,14 +458,14 @@ namespace esphome {
             };
 
             if (debug_) {
-                ESP_LOGD(TAG, "Decoded: ID: %04x, Power State Total kWh %d, Phase Voltages: %d, %d, %d, Phase Currents: %d, %d, %d\r\n", 
-                power_state->twcid, 
-                ntohl(power_state_payload->total_kwh), 
-                ntohs(power_state_payload->phase1_voltage), 
-                ntohs(power_state_payload->phase2_voltage), 
+                ESP_LOGD(TAG, "Decoded: ID: %04x, Power State Total kWh %d, Phase Voltages: %d, %d, %d, Phase Currents: %d, %d, %d\r\n",
+                power_state->twcid,
+                ntohl(power_state_payload->total_kwh),
+                ntohs(power_state_payload->phase1_voltage),
+                ntohs(power_state_payload->phase2_voltage),
                 ntohs(power_state_payload->phase3_voltage),
-                power_state_payload->phase1_current, 
-                power_state_payload->phase2_current, 
+                power_state_payload->phase1_current,
+                power_state_payload->phase2_current,
                 power_state_payload->phase3_current);
             }
         }
@@ -450,10 +473,33 @@ namespace esphome {
         void TeslaController::DecodePrimaryPresence(RESP_PACKET_T *presence, uint8_t num) {
             PRESENCE_PAYLOAD_T *presence_payload = (PRESENCE_PAYLOAD_T *)presence->payload;
 
+            // in case we're passively listening we have to handle primary presence like a secondary
+            // one.. beacuse we will still get the power status
+            TeslaConnector *connector = GetConnector(presence->twcid);
+
+            if (!connector) {
+                ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x, Sign: %02x, Max Allowable Current: %d\r\n",
+                    presence->twcid,
+                    presence_payload->sign,
+                    ntohs(presence_payload->max_allowable_current)
+                );
+
+                uint8_t max_allowable_current = (uint8_t)(ntohs(presence_payload->max_allowable_current)/100);
+
+                connector = new TeslaConnector(presence->twcid, max_allowable_current);
+                chargers[num_connected_chargers_++] = connector;
+
+                controller_io_->writeCharger(connector->twcid, connector->max_allowable_current);
+                controller_io_->writeTotalConnectedChargers(num_connected_chargers_);
+
+                controller_io_->resetIO(presence->twcid);
+            }
+
+
             if (debug_) {
-                ESP_LOGD(TAG, "Decoded: Primary Presence %d - ID: %02x, Sign: %02x\r\n", 
+                ESP_LOGD(TAG, "Decoded: Primary Presence %d - ID: %02x, Sign: %02x\r\n",
                     num,
-                    presence->twcid, 
+                    presence->twcid,
                     presence_payload->sign
                 );
             }
@@ -461,8 +507,8 @@ namespace esphome {
 
         void TeslaController::DecodePrimaryHeartbeat(P_HEARTBEAT_T *heartbeat) {
             if (debug_) {
-                ESP_LOGD(TAG, "Decoded: Primary Heartbeat - ID: %02x, To %02x, State %02x, Max Current: %d, Plug Inserted: %02x\r\n", 
-                    heartbeat->src_twcid, 
+                ESP_LOGD(TAG, "Decoded: Primary Heartbeat - ID: %02x, To %02x, State %02x, Max Current: %d, Plug Inserted: %02x\r\n",
+                    heartbeat->src_twcid,
                     heartbeat->dst_twcid,
                     heartbeat->state,
                     ntohs(heartbeat->max_current),
@@ -474,9 +520,9 @@ namespace esphome {
             reply.command = SECONDARY_HEARTBEAT;
             reply.src_twcid = twcid_
             reply.dst_twcid = heartbeat->src_twcid;
-            reply.status = 
-            reply.max_current = 
-            reply.actual_current = 
+            reply.status =
+            reply.max_current =
+            reply.actual_current =
             for (uint8_t i = 0; i < 4; i++) {
                 reply.padding[i] = 0x00;
             }
@@ -511,7 +557,7 @@ namespace esphome {
                 UpdateTotalConnectedCars();
                 controller_io_->writeChargerState(heartbeat->src_twcid, c->state);
             }
-            
+
 
             // Check whether the current the secondary is charging at has changed.  If it has
             // force an udpate of the total current being used and update the internal state
@@ -546,48 +592,25 @@ namespace esphome {
 
         void TeslaController::DecodeSecondaryPresence(RESP_PACKET_T *presence) {
             PRESENCE_PAYLOAD_T *presence_payload = (PRESENCE_PAYLOAD_T *)presence->payload;
-            bool alreadySeen = false;
 
-            for (uint8_t i = 0; i < num_connected_chargers_; i++) {
-                if (chargers[i]->twcid == presence->twcid) {
-                    alreadySeen = true;
-                }
-            }
+            TeslaConnector *connector = GetConnector(presence->twcid);
 
-            if (!alreadySeen) {
-                ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x, Sign: %02x, Max Allowable Current: %d\r\n", 
-                    presence->twcid, 
+            if (!connector) {
+                ESP_LOGD(TAG, "New charger seen - adding to controller. ID: %04x, Sign: %02x, Max Allowable Current: %d\r\n",
+                    presence->twcid,
                     presence_payload->sign,
                     ntohs(presence_payload->max_allowable_current)
                 );
 
                 uint8_t max_allowable_current = (uint8_t)(ntohs(presence_payload->max_allowable_current)/100);
 
-                TeslaConnector *connector = new TeslaConnector(presence->twcid, max_allowable_current);
+                connector = new TeslaConnector(presence->twcid, max_allowable_current);
                 chargers[num_connected_chargers_++] = connector;
 
                 controller_io_->writeCharger(connector->twcid, connector->max_allowable_current);
                 controller_io_->writeTotalConnectedChargers(num_connected_chargers_);
-                
-                // Write 0's to MQTT for each topic which has 0 as a valid value.  This is because
-                // we compare the old and new values and by default everything is 0 so it never writes
-                // anything.  This way we start at 0 and immediately update to the real value if there is
-                // one, or stay at 0 (which is correct) if there isn't.
-                controller_io_->writeChargerVoltage(presence->twcid, 0, 1);
-                controller_io_->writeChargerVoltage(presence->twcid, 0, 2);
-                controller_io_->writeChargerVoltage(presence->twcid, 0, 3);
 
-                controller_io_->writeChargerCurrent(presence->twcid, 0, 1);
-                controller_io_->writeChargerCurrent(presence->twcid, 0, 2);
-                controller_io_->writeChargerCurrent(presence->twcid, 0, 3);
-
-                controller_io_->writeChargerActualCurrent(presence->twcid, 0);
-
-                controller_io_->writeChargerConnectedVin(presence->twcid, "0");
-
-                controller_io_->writeChargerState(presence->twcid, 0);
-
-                controller_io_->writeTotalConnectedCars(0);
+                controller_io_->resetIO(presence->twcid);
             }
         }
 
@@ -636,7 +659,7 @@ namespace esphome {
                     break;
                 case RESP_VIN_LAST:
                     if (memcmp(&vin[14], &vin_payload->vin, 3) != 0) {
-                        changed = true;   
+                        changed = true;
                         memcpy(&vin[14], &vin_payload->vin, 3);
                     }
                     break;
@@ -654,15 +677,15 @@ namespace esphome {
                 } else {
                     ESP_LOGD(TAG, "VIN: %s", std::string((char *)vin_payload->vin));
                 }
-                
+
             }
-            
+
         }
 
         // Process a fully received packet (i.e. data with C0 on each end)
         void TeslaController::ProcessPacket(uint8_t *packet, size_t length) {
             if (debug_) {
-                ESP_LOGD(TAG, "Recieved Packet: ");             
+                ESP_LOGD(TAG, "Recieved Packet: ");
                 controller_io_->writeRawPacket(packet, length);
             }
 
@@ -683,7 +706,7 @@ namespace esphome {
                 ESP_LOGD(TAG, "%s", res.c_str());
                 return;
             }
-            
+
             uint16_t command = ((uint16_t)packet[0]<<8) | packet[1];
 
             switch (command) {
@@ -703,7 +726,7 @@ namespace esphome {
                 case RESP_VIN_MIDDLE:
                 case RESP_VIN_LAST:
                     DecodeVin((EXTENDED_RESP_PACKET_T *)packet);
-                    break;    
+                    break;
                 case RESP_PWR_STATUS:
                     DecodePowerState((EXTENDED_RESP_PACKET_T *)packet);
                     break;
@@ -722,7 +745,7 @@ namespace esphome {
                 case GET_VIN_MIDDLE:
                 case GET_VIN_LAST:
                     //DecodeGetVin((PACKET_T*)packet)
-                    break;   
+                    break;
                 default:
                     ESP_LOGD(TAG, "Unknown packet type received: %#02x: 0x", command);
                     break;
@@ -779,7 +802,7 @@ namespace esphome {
                 for (uint8_t i = 0; i < j; i++) {
                     ESP_LOGD(TAG, "%02x", outputBuffer[i]);
                 }
-                
+
             }
 
             if (this->flow_control_pin_ != nullptr)
