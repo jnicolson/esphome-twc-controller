@@ -29,14 +29,14 @@ namespace esphome {
 
         TeslaController::TeslaController(uart::UARTComponent* serial, TeslaControllerIO *io, uint16_t twcid, GPIOPin *flow_control_pin, int passive_mode) :
             serial_(serial),
-            controller_io_(io),
             flow_control_pin_(flow_control_pin),
-            max_current_(0),
-            min_current_(0),
-            stopstart_delay_(0),
+            controller_io_(io),
             num_connected_chargers_(0),
             twcid_(twcid),
             sign_(0x77),
+            max_current_(0),
+            min_current_(0),
+            stopstart_delay_(0),
             debug_(false),
             passive_mode_(passive_mode)
         {
@@ -665,9 +665,9 @@ namespace esphome {
                     break;
             }
 
-            if (changed & (strlen((const char*)vin) == 17)) {
+            if (changed && (strlen((const char*)vin) == 17)) {
                 controller_io_->writeChargerConnectedVin(vin_data->twcid, std::string((char *)vin));
-            } else if (changed & strlen((const char*)vin) == 0) {
+            } else if (changed && strlen((const char*)vin) == 0) {
                 controller_io_->writeChargerConnectedVin(vin_data->twcid, "0");
             }
 
