@@ -97,8 +97,8 @@ CONFIG_SCHEMA = cv.All(
     number.number_schema(TWCController).extend(
         {
             cv.Optional(CONF_NAME, default="Set Current"): cv.string,
-            cv.Optional(CONF_MIN_CURRENT, default=6): cv.int_range(min=6, max=32),
-            cv.Optional(CONF_MAX_CURRENT, default=32): cv.int_range(min=6, max=32),
+            cv.Optional(CONF_MIN_CURRENT, default=6): cv.int_range(min=6, max=80),
+            cv.Optional(CONF_MAX_CURRENT, default=32): cv.int_range(min=6, max=80),
             cv.Optional(CONF_TWCID, default=0xABCD): cv.hex_int_range(0, 65535),
             cv.Optional(CONF_SET_CURRENT): cv.positive_int,
             cv.Optional(CONF_STEP, default=1): cv.positive_int,
