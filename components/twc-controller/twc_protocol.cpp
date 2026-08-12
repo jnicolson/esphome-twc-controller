@@ -349,8 +349,8 @@ namespace esphome {
 
             TeslaConnector *c = GetConnector(firmware_ver->twcid);
 
-            char buffer[10];
-            snprintf(buffer, 10, "%d.%d.%d.%d",
+            char buffer[16];
+            snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d",
                 firmware_payload->major,
                 firmware_payload->minor,
                 firmware_payload->revision,
@@ -407,7 +407,7 @@ namespace esphome {
 
 
             if (debug_) {
-                ESP_LOGD(TAG, "Decoded: ID: %04x, Serial Number: %s", serial->twcid, std::string((char*)&c->serial_number));
+                ESP_LOGD(TAG, "Decoded: ID: %04x, Serial Number: %s", serial->twcid, (char*)&c->serial_number);
             }
         }
 
@@ -480,9 +480,9 @@ namespace esphome {
             };
 
             if (debug_) {
-                ESP_LOGD(TAG, "Decoded: ID: %04x, Power State Total kWh %d, Phase Voltages: %d, %d, %d, Phase Currents: %d, %d, %d\r\n",
+                ESP_LOGD(TAG, "Decoded: ID: %04x, Power State Total kWh %lu, Phase Voltages: %d, %d, %d, Phase Currents: %d, %d, %d\r\n",
                 power_state->twcid,
-                ntohl(power_state_payload->total_kwh),
+                (unsigned long) ntohl(power_state_payload->total_kwh),
                 ntohs(power_state_payload->phase1_voltage),
                 ntohs(power_state_payload->phase2_voltage),
                 ntohs(power_state_payload->phase3_voltage),
@@ -643,7 +643,7 @@ namespace esphome {
             }
 
             if (debug_) {
-                ESP_LOGD(TAG, "Updating actual current to %f\r\n", total_current_);
+                ESP_LOGD(TAG, "Updating actual current to %d\r\n", total_current_);
             }
             controller_io_->writeActualCurrent(total_current_);
         }
@@ -702,7 +702,7 @@ namespace esphome {
                 if (strlen((const char*)vin_payload->vin) == 0) {
                     ESP_LOGD(TAG, "No Car Connected");
                 } else {
-                    ESP_LOGD(TAG, "VIN: %s", std::string((char *)vin_payload->vin));
+                    ESP_LOGD(TAG, "VIN: %s", (char *)vin_payload->vin);
                 }
 
             }
